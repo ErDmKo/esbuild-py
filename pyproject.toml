@@ -7,10 +7,13 @@ name = "esbuild_py"
 version = "0.1.5"
 authors = [
   { name="Mark Keller", email="mark_keller@hms.harvard.edu" },
+  { name="Dmitrii Eroshenko", email="erdmko@gmail.com" },
 ]
 description = "Python bindings to the esbuild Transform API"
 readme = "README.md"
-license = {file = "LICENSE"}
+license-files = [
+  "LICENSE"
+]
 requires-python = ">=3.7"
 keywords = ["widgets", "javascript", "react"]
 classifiers = [
