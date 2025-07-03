@@ -30,6 +30,7 @@ classifiers = [
 
 [project.optional-dependencies]
 dev = [
+  'wasmtime',
   'build==0.1.0',
   'pytest>=6.2.4',
   'coverage>=6.3.2',
@@ -51,4 +52,3 @@ where = ["src"]
 pythonpath = [
   "src"
 ]
-
