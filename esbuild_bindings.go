@@ -23,41 +23,7 @@ type TransformRequest struct {
 	} `json:"options"`
 }
 
-// mapStringToLoader converts a string from Python into the corresponding
-// esbuild api.Loader enum value.
-func mapStringToLoader(loaderStr string) api.Loader {
-	switch loaderStr {
-	case "js":
-		return api.LoaderJS
-	case "jsx":
-		return api.LoaderJSX
-	case "ts":
-		return api.LoaderTS
-	case "tsx":
-		return api.LoaderTSX
-	case "css":
-		return api.LoaderCSS
-	case "json":
-		return api.LoaderJSON
-	case "text":
-		return api.LoaderText
-	case "base64":
-		return api.LoaderBase64
-	case "dataurl":
-		return api.LoaderDataURL
-	case "file":
-		return api.LoaderFile
-	case "binary":
-		return api.LoaderBinary
-	default:
-		// Fallback to JS if an unknown loader is provided.
-		// esbuild will likely error out, which is the desired behavior.
-		return api.LoaderJS
-	}
-}
-
 //export transform
-// transform is the C-exported function that wraps esbuild's Transform API.
 func transform(requestJSON *C.char) *C.char {
 	goRequestJSON := C.GoString(requestJSON)
 	var req TransformRequest
@@ -69,7 +35,7 @@ func transform(requestJSON *C.char) *C.char {
 	}
 
 	realOptions := api.TransformOptions{
-		Loader: mapStringToLoader(req.Options.Loader),
+		Loader: shared.MapStringToLoader(req.Options.Loader),
 	}
 
 	result := api.Transform(req.Code, realOptions)

@@ -1,7 +1,9 @@
 import unittest
+import importlib
 import tempfile
 import os
 import esbuild_py
+from unittest import mock
 
 class TestBuildAPI(unittest.TestCase):
     """
@@ -20,17 +22,7 @@ class TestBuildAPI(unittest.TestCase):
         """
         self.temp_dir.cleanup()
 
-    def test_native_build_simple_bundle(self):
-        """
-        Tests the native build functionality with a single entry point that
-        imports another file, verifying that they are bundled correctly.
-        """
-        # This test is specifically for the native backend.
-        if esbuild_py.BACKEND != 'native':
-            # In a more complex setup, one might use pytest markers to skip.
-            # For now, we'll just raise an error if the wrong backend is active.
-            self.fail("This test requires the 'native' backend to be active.")
-
+    def create_files(self):
         # --- 1. Create source files ---
 
         # An imported utility file
@@ -46,25 +38,65 @@ class TestBuildAPI(unittest.TestCase):
         # The destination for the bundled output
         outfile_path = os.path.join(self.temp_dir.name, 'bundle.js')
 
-        # --- 2. Call the (yet to be implemented) build function ---
+        return {
+            'outfile_path': outfile_path,
+            'lib_path': lib_path,
+            'entry_path': entry_path
+        }
 
-        # This call will fail until we implement the `build` function.
+    @mock.patch('esbuild_py._native_backend.NativeBackend', side_effect=FileNotFoundError)
+    def test_wasm_backend_build(self, mock_native_backend):
+        importlib.reload(esbuild_py)
+
+        files = self.create_files()
+        self.assertEqual(esbuild_py.BACKEND, 'wasm', "The WASM backend should be active after the native one fails.")
+
         result = esbuild_py.build(
-            entry_points=[entry_path],
-            outfile=outfile_path,
+            entry_points=[files['entry_path']],
+            outfile=files['outfile_path'],
         )
 
-        # --- 3. Assert the results ---
+        self.assertEqual(len(result['errors']), 0, "Build should complete without errors.")
+        self.assertEqual(len(result['warnings']), 0, "Build should complete without warnings.")
+
+        # The content of the file should be a bundled application
+        with open(files['outfile_path'], 'r') as f:
+            content = f.read()
+
+        # Check that code from both files is present in the bundle
+        self.assertIn("Hello from lib", content, "Content from the imported file should be in the bundle.")
+        self.assertIn("console.log", content, "Content from the entry point should be in the bundle.")
+        # Check that esbuild added its comments indicating the source files
+        self.assertIn("lib.js", content)
+        self.assertIn("app.js", content)
+
+    def test_native_build_simple_bundle(self):
+        """
+        Tests the native build functionality with a single entry point that
+        imports another file, verifying that they are bundled correctly.
+        """
+        # This test is specifically for the native backend.
+        if esbuild_py.BACKEND != 'native':
+            # In a more complex setup, one might use pytest markers to skip.
+            # For now, we'll just raise an error if the wrong backend is active.
+            self.fail("This test requires the 'native' backend to be active.")
+
+        files = self.create_files()
+
+        result = esbuild_py.build(
+            entry_points=[files['entry_path']],
+            outfile=files['outfile_path'],
+        )
 
         # The build result should not contain errors
         self.assertEqual(len(result['errors']), 0, "Build should complete without errors.")
         self.assertEqual(len(result['warnings']), 0, "Build should complete without warnings.")
 
         # The output file should exist
-        self.assertTrue(os.path.exists(outfile_path), "The bundled output file should be created.")
+        self.assertTrue(os.path.exists(files['outfile_path']), "The bundled output file should be created.")
 
         # The content of the file should be a bundled application
-        with open(outfile_path, 'r') as f:
+        with open(files['outfile_path'], 'r') as f:
             content = f.read()
 
         # Check that code from both files is present in the bundle

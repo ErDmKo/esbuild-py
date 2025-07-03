@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-
 	"github.com/evanw/esbuild/pkg/api"
+
+	"github.com/keller-mark/esbuild-py/internal/shared"
 )
 
 // IntermediateRequest is used to unmarshal the JSON from Python. We use this
@@ -18,7 +19,11 @@ import (
 type IntermediateRequest struct {
 	Command string `json:"command"`
 	Input   string `json:"input"`
-	Options struct {
+	BuildOptions struct {
+		EntryPoints []string
+		Outfile string
+	}
+	TransformOptions struct {
 		Loader string `json:"loader"`
 	} `json:"options"`
 }
@@ -27,39 +32,6 @@ type IntermediateRequest struct {
 type Response struct {
 	Code  string `json:"code"`
 	Error string `json:"error,omitempty"`
-}
-
-// mapStringToLoader converts a string from Python into the corresponding
-// esbuild api.Loader enum value.
-func mapStringToLoader(loaderStr string) api.Loader {
-	switch loaderStr {
-	case "js":
-		return api.LoaderJS
-	case "jsx":
-		return api.LoaderJSX
-	case "ts":
-		return api.LoaderTS
-	case "tsx":
-		return api.LoaderTSX
-	case "css":
-		return api.LoaderCSS
-	case "json":
-		return api.LoaderJSON
-	case "text":
-		return api.LoaderText
-	case "base64":
-		return api.LoaderBase64
-	case "dataurl":
-		return api.LoaderDataURL
-	case "file":
-		return api.LoaderFile
-	case "binary":
-		return api.LoaderBinary
-	default:
-		// Fallback to JS if an unknown loader is provided.
-		// esbuild will likely error out, which is the desired behavior.
-		return api.LoaderJS
-	}
 }
 
 func main() {
@@ -81,10 +53,35 @@ func main() {
 
 	// Execute the requested command.
 	switch req.Command {
+	case "build":
+		options := api.BuildOptions{
+			Bundle: true,
+			Write: true,
+			Outfile: req.BuildOptions.Outfile,
+			EntryPoints: req.BuildOptions.EntryPoints,
+		}
+		result := api.Build(options)
+
+		// Use the shared constructor. The code is empty as it's written to a file.
+		response := shared.NewApiResponse("", result.Errors, result.Warnings)
+
+		responseBytes, err := json.Marshal(response)
+		if err != nil {
+			errResponse := shared.NewApiResponse("", []api.Message{{Text: "Failed to marshal build response JSON: " + err.Error()}}, nil)
+			responseBytes, err = json.Marshal(errResponse)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error marshaling JSON response: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Print(string(responseBytes))
+		} else {
+			fmt.Print(string(responseBytes))
+			os.Exit(0)
+		}
 	case "transform":
 		// Manually construct the real esbuild options, mapping the string loader.
 		realOptions := api.TransformOptions{
-			Loader: mapStringToLoader(req.Options.Loader),
+			Loader: shared.MapStringToLoader(req.TransformOptions.Loader),
 		}
 
 		result := api.Transform(req.Input, realOptions)

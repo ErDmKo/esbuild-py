@@ -19,15 +19,11 @@ class TestWasmBackend(unittest.TestCase):
         Verify that the WASM backend is used when the native backend fails
         and that it correctly transforms code.
         """
-        # The esbuild_py package is initialized on its first import. To test the
-        # fallback logic, we must force a reload of the module *while* the patch
-        # is active. This re-triggers the backend selection logic.
         importlib.reload(esbuild_py)
 
         # 1. Verify that the WASM backend is now active
         self.assertEqual(esbuild_py.BACKEND, 'wasm', "The WASM backend should be active after the native one fails.")
 
-        # 2. Perform a standard transformation test
         jsx = """
 import * as React from 'react'
 import * as ReactDOM from 'react-dom'
@@ -46,10 +42,6 @@ ReactDOM.render(
 );
         """.strip()
 
-        # Use the main transform function, which should now be routed to the WASM backend
         actual_js = esbuild_py.transform(jsx, loader='jsx').strip()
 
         self.assertEqual(actual_js, expected_js)
-
-        # The backend will be automatically restored when the mock patch exits
-        # context at the end of the test function.

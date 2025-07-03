@@ -42,27 +42,7 @@ class WasmBackend:
         log.debug(f"Successfully loaded {len(wasm_bytes)} bytes of WASM code.")
         return wasmtime.Module(self.engine, wasm_bytes)
 
-    def transform(self, code: str, **kwargs):
-        """
-        The main API method for this backend. It transforms the given code
-        by running the WASM module as a sandboxed CLI tool, using temporary
-        files for I/O.
-        """
-        # 1. Prepare the JSON request payload.
-        options = kwargs.copy()
-        if 'loader' not in options:
-            options['loader'] = 'jsx'
-
-        request_payload = {
-            "command": "transform",
-            "input": code,
-            "options": options,
-        }
-        request_json_bytes = json.dumps(request_payload).encode('utf-8')
-
-        # 2. Create temporary files for stdin and stdout.
-        # We use NamedTemporaryFile to get a file path that we can pass to wasmtime.
-        # We must ensure these files are cleaned up properly.
+    def send_content(self, request_json_bytes, files=[]):
         stdin_file = tempfile.NamedTemporaryFile(delete=False)
         stdout_file = tempfile.NamedTemporaryFile(delete=False)
 
@@ -76,8 +56,10 @@ class WasmBackend:
             wasi_config.stdin_file = stdin_file.name
             wasi_config.stdout_file = stdout_file.name
             wasi_config.stderr_file = stdout_file.name # Redirect stderr to stdout file for easier debugging.
+            wasi_config.preopen_dir('/', '/')
 
             # 4. Instantiate and run the WASM module.
+
             store = wasmtime.Store(self.engine)
             store.set_wasi(wasi_config)
             linker = wasmtime.Linker(self.engine)
@@ -100,7 +82,7 @@ class WasmBackend:
             # 5. Read the result from the stdout file.
             with open(stdout_file.name, 'rb') as f:
                 output_bytes = f.read()
-
+            log.debug(output_bytes.decode('utf-8'))
             if not output_bytes:
                 raise RuntimeError("esbuild WASM process returned no data.")
 
@@ -110,9 +92,40 @@ class WasmBackend:
             if error_message := response.get("error"):
                 raise RuntimeError(f"esbuild transformation failed: {error_message}")
 
-            return response.get("code", "")
+            return response
 
         finally:
             # 7. CRITICAL: Clean up the temporary files.
             os.unlink(stdin_file.name)
             os.unlink(stdout_file.name)
+
+    def transform(self, code: str, **kwargs):
+        """
+        The main API method for this backend. It transforms the given code
+        by running the WASM module as a sandboxed CLI tool, using temporary
+        files for I/O.
+        """
+        # 1. Prepare the JSON request payload.
+        options = kwargs.copy()
+        if 'loader' not in options:
+            options['loader'] = 'jsx'
+
+        request_payload = {
+            "command": "transform",
+            "input": code,
+            "options": options,
+        }
+        request_json_bytes = json.dumps(request_payload).encode('utf-8')
+        return self.send_content(request_json_bytes)['code']
+
+    def build(self, **kwargs):
+        input = {
+            "command": "build",
+            "BuildOptions": {
+                'EntryPoints': kwargs['entry_points'],
+                'Outfile': kwargs['outfile']
+            }
+        }
+        request_json_bytes = json.dumps(input).encode('utf-8')
+        files = kwargs['entry_points'] + [kwargs['outfile']]
+        return self.send_content(request_json_bytes, files)
