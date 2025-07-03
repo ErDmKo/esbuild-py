@@ -63,6 +63,33 @@ def transform(code: str, **kwargs):
             "Please try reinstalling the package. If the problem persists, please open an issue at: \n"
             "https://github.com/esbuild-kit/esbuild-py/issues"
         )
-    
+
     # Delegate the call to the active backend's transform method.
     return _backend_instance.transform(code, **kwargs)
+
+
+def build(**kwargs) -> dict:
+    """
+    Builds, bundles, and optionally minifies one or more entry points using
+    the active esbuild backend.
+
+    This is the primary public API for bundling files. It automatically
+    selects the best available backend (native or WASM) and delegates the
+    call to it.
+
+    Args:
+        **kwargs: esbuild build options, such as `entry_points`, `outfile`,
+                  `bundle`, `minify`, etc.
+
+    Returns:
+        A dictionary containing 'errors' and 'warnings' lists.
+
+    Raises:
+        RuntimeError: If the build fails or if no backend is available.
+    """
+    if _backend_instance is None:
+        raise RuntimeError(
+            "No esbuild backend is available. The native library may be missing "
+            "or the WASM fallback failed."
+        )
+    return _backend_instance.build(**kwargs)

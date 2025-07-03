@@ -42,6 +42,10 @@ class NativeBackend:
         self._transform.argtypes = [ctypes.c_char_p]
         self._transform.restype = ctypes.c_void_p
 
+        self._build = self.so.build
+        self._build.argtypes = [ctypes.c_char_p]
+        self._build.restype = ctypes.c_void_p
+
         # The Go 'free' function takes the pointer we received and frees it.
         self._free = self.so.free
         self._free.argtypes = [ctypes.c_void_p]
@@ -64,7 +68,7 @@ class NativeBackend:
         # For an editable install, setuptools places the compiled .so file
         # inside the source package directory.
         package_dir = str(Path(__file__).absolute().parent)
-        
+
         # 1. Check the primary location first.
         primary_path = os.path.join(package_dir, so_filename)
         log.debug(f"Checking primary path: {primary_path}")
@@ -90,7 +94,7 @@ class NativeBackend:
 
         request = {"code": code, "options": options}
         request_json = json.dumps(request)
-        
+
         result_ptr = None
         try:
             # 1. Call the Go function, which returns a raw pointer.
@@ -101,11 +105,11 @@ class NativeBackend:
 
             # 2. Cast the raw pointer to a C string pointer and get its value.
             c_string = ctypes.cast(result_ptr, ctypes.c_char_p).value
-            
+
             # 3. Decode the bytes to a Python string.
             result_json = c_string.decode('utf-8')
             log.info(f"Received raw JSON from native call: {result_json!r}")
-            
+
             # 4. Process the response.
             response = json.loads(result_json)
 
@@ -118,6 +122,39 @@ class NativeBackend:
         finally:
             # 5. CRITICAL: Always free the memory allocated by Go.
             # This runs even if errors occur in the `try` block.
+            if result_ptr:
+                log.debug(f"Freeing memory at address: {result_ptr}")
+                self._free(result_ptr)
+
+    def build(self, **kwargs):
+        """Proxy for the Go build function with safe memory management."""
+        # The kwargs are the build options, which we pass directly as JSON.
+        input = {
+            'EntryPoints': kwargs['entry_points'],
+            'Outfile': kwargs['outfile']
+        }
+        request_json = json.dumps(input)
+
+        result_ptr = None
+        try:
+            # 1. Call the Go function, which returns a raw pointer to the result JSON.
+            result_ptr = self._build(request_json.encode('utf-8'))
+
+            if not result_ptr:
+                raise RuntimeError("esbuild build function returned a NULL pointer.")
+
+            # 2. Cast the raw pointer to a C string pointer and get its value.
+            c_string = ctypes.cast(result_ptr, ctypes.c_char_p).value
+
+            # 3. Decode the bytes to a Python string.
+            result_json = c_string.decode('utf-8')
+            log.info(f"Received raw JSON from native build call: {result_json!r}")
+
+            # 4. The result is the JSON itself, containing errors and warnings.
+            return json.loads(result_json)
+
+        finally:
+            # 5. CRITICAL: Always free the memory allocated by Go.
             if result_ptr:
                 log.debug(f"Freeing memory at address: {result_ptr}")
                 self._free(result_ptr)

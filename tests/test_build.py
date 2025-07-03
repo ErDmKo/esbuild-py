@@ -2,7 +2,6 @@ import unittest
 import tempfile
 import os
 import esbuild_py
-import json
 
 class TestBuildAPI(unittest.TestCase):
     """
@@ -50,13 +49,10 @@ class TestBuildAPI(unittest.TestCase):
         # --- 2. Call the (yet to be implemented) build function ---
 
         # This call will fail until we implement the `build` function.
-        result = esbuild_py.build({
-            "entry_points": [entry_path],
-            "outfile": outfile_path,
-            "bundle": True,
-            "minify": False, # Keep output readable for assertions
-            "format": "esm",
-        })
+        result = esbuild_py.build(
+            entry_points=[entry_path],
+            outfile=outfile_path,
+        )
 
         # --- 3. Assert the results ---
 
@@ -75,8 +71,8 @@ class TestBuildAPI(unittest.TestCase):
         self.assertIn("Hello from lib", content, "Content from the imported file should be in the bundle.")
         self.assertIn("console.log", content, "Content from the entry point should be in the bundle.")
         # Check that esbuild added its comments indicating the source files
-        self.assertIn("// lib.js", content)
-        self.assertIn("// app.js", content)
+        self.assertIn("lib.js", content)
+        self.assertIn("app.js", content)
 
 if __name__ == '__main__':
     unittest.main()

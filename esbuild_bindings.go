@@ -1,29 +1,26 @@
 package main
 
-import "C"
 import (
+	"C"
 	"encoding/json"
 
 	"github.com/evanw/esbuild/pkg/api"
+	"github.com/keller-mark/esbuild-py/internal/shared"
 )
 
 // This file provides the Go bindings for the esbuild API that are called from
 // Python using ctypes.
 
-// IntermediateRequest is used to unmarshal the JSON from Python. We use this
-// intermediate struct because the `Loader` field in `api.TransformOptions`
+// --- Transform-specific Structures ---
+
+// TransformRequest is used to unmarshal the JSON from Python for the transform API.
+// We use this intermediate struct because the `Loader` field in `api.TransformOptions`
 // is an enum, not a string, and requires manual mapping.
-type IntermediateRequest struct {
+type TransformRequest struct {
 	Code    string `json:"code"`
 	Options struct {
 		Loader string `json:"loader"`
 	} `json:"options"`
-}
-
-// Response defines the structure of the JSON response sent back to Python.
-type Response struct {
-	Code   string        `json:"code"`
-	Errors []api.Message `json:"errors"`
 }
 
 // mapStringToLoader converts a string from Python into the corresponding
@@ -62,46 +59,63 @@ func mapStringToLoader(loaderStr string) api.Loader {
 //export transform
 // transform is the C-exported function that wraps esbuild's Transform API.
 func transform(requestJSON *C.char) *C.char {
-	// 1. Unmarshal the request from Python into our intermediate struct.
 	goRequestJSON := C.GoString(requestJSON)
-	var req IntermediateRequest
+	var req TransformRequest
 	if err := json.Unmarshal([]byte(goRequestJSON), &req); err != nil {
-		errResponse := Response{
-			Errors: []api.Message{{Text: "Failed to parse request JSON: " + err.Error()}},
-		}
-		responseBytes, _ := json.Marshal(errResponse)
+		// On failure, create a response with the parsing error.
+		response := shared.NewApiResponse("", []api.Message{{Text: "Failed to parse request JSON: " + err.Error()}}, nil)
+		responseBytes, _ := json.Marshal(response)
 		return C.CString(string(responseBytes))
 	}
 
-	// 2. Manually construct the real esbuild options, mapping the string loader.
 	realOptions := api.TransformOptions{
 		Loader: mapStringToLoader(req.Options.Loader),
 	}
 
-	// 3. Call the actual esbuild Transform API.
 	result := api.Transform(req.Code, realOptions)
 
-	// 4. Create the response object to send back to Python.
-	response := Response{
-		Errors: result.Errors,
-	}
-	if len(result.Errors) == 0 {
-		response.Code = string(result.Code)
-	}
+	// Use the shared constructor to create a well-formed response.
+	response := shared.NewApiResponse(string(result.Code), result.Errors, result.Warnings)
 
-	// 5. Marshal the response to JSON.
 	responseBytes, err := json.Marshal(response)
 	if err != nil {
 		// This is an internal error, but we still try to return it as a JSON error.
-		errResponse := Response{
-			Errors: []api.Message{{Text: "Failed to marshal response JSON: " + err.Error()}},
-		}
+		errResponse := shared.NewApiResponse("", []api.Message{{Text: "Failed to marshal response JSON: " + err.Error()}}, nil)
 		responseBytes, _ = json.Marshal(errResponse)
 		return C.CString(string(responseBytes))
 	}
 
-	// 6. Convert Go string back to C string and return.
-	// The memory for this string must be freed by the Python caller.
+	return C.CString(string(responseBytes))
+}
+
+//export build
+// build is the C-exported function that wraps esbuild's Build API.
+func build(requestJSON *C.char) *C.char {
+	goRequestJSON := C.GoString(requestJSON)
+	var options api.BuildOptions
+	if err := json.Unmarshal([]byte(goRequestJSON), &options); err != nil {
+		response := shared.NewApiResponse("", []api.Message{{Text: "Failed to parse build request JSON: " + err.Error()}}, nil)
+		responseBytes, _ := json.Marshal(response)
+		return C.CString(string(responseBytes))
+	}
+
+	// For build, esbuild defaults to bundling if an outfile is specified.
+	// We will explicitly set it to true to be clear and consistent.
+	options.Bundle = true
+	options.Write = true
+
+	result := api.Build(options)
+
+	// Use the shared constructor. The code is empty as it's written to a file.
+	response := shared.NewApiResponse("", result.Errors, result.Warnings)
+
+	responseBytes, err := json.Marshal(response)
+	if err != nil {
+		errResponse := shared.NewApiResponse("", []api.Message{{Text: "Failed to marshal build response JSON: " + err.Error()}}, nil)
+		responseBytes, _ = json.Marshal(errResponse)
+		return C.CString(string(responseBytes))
+	}
+
 	return C.CString(string(responseBytes))
 }
 
