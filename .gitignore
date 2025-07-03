@@ -6,7 +6,7 @@
 *.dylib
 *.wasm
 # Allow precompiled WASM binary for fallback
-!src/esbuild/precompiled/esbuild.wasm
+!precompiled/esbuild.wasm
 
 # Test binary, built with `go test -c`
 *.test

@@ -11,7 +11,7 @@ set -e
 # --- Configuration ---
 # The source file is the Go program with the main function that handles stdin/stdout.
 SOURCE_FILE="esbuild_bindings_wasm.go"
-OUTPUT_PATH="src/esbuild_py/precompiled/esbuild.wasm"
+OUTPUT_PATH="precompiled/esbuild.wasm"
 
 # --- Build Process ---
 echo "Building esbuild WASM CLI with standard Go compiler..."
