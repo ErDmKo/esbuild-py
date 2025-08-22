@@ -41,6 +41,15 @@ Parameters:
 Returns: `str` - The transformed JS as a string.
 
 
+## Testing
+
+Install development dependencies and run tests using `uv`.
+
+```sh
+uv sync --all-extras
+uv run pytest
+```
+
 ## Development
 
 ### Setup
