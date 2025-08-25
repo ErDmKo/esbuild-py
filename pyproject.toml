@@ -11,6 +11,7 @@ authors = [
 ]
 description = "Python bindings to the esbuild Transform API"
 readme = "README.md"
+dynamic = ['dependencies']
 license-files = [
   "LICENSE"
 ]
