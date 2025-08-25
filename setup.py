@@ -45,6 +45,7 @@ class build_go_ext(build_ext):
 
 setup_args = dict(
     install_requires=[],
+    include_package_data=True,
     zip_safe=False,
 )
 
