@@ -44,9 +44,6 @@ repository = "https://github.com/keller-mark/esbuild-py"
 [tool.setuptools]
 package-dir = {"" = "src"}
 
-[tool.setuptools.package-data]
-esbuild_py = ["precompiled/esbuild.wasm"]
-
 [tool.setuptools.packages.find]
 where = ["src"]
 

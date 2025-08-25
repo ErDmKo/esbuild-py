@@ -68,6 +68,7 @@ else:
     log.warning("The 'wasmtime' package will be installed as a dependency.")
     # If Go is not available, we add 'wasmtime' as a runtime dependency
     # so that the precompiled WASM module can be executed.
+    setup_args['package_data'] = { 'esbuild_py': ['precompiled/esbuild.wasm'] }
     setup_args['install_requires'] = ['wasmtime']
 
 # Finally, run the setup command.
