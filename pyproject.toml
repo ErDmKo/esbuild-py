@@ -15,6 +15,9 @@ license-files = [
   "LICENSE"
 ]
 requires-python = ">=3.7"
+dependencies = [
+  'wasmtime',
+]
 keywords = ["widgets", "javascript", "react"]
 classifiers = [
   'Development Status :: 4 - Beta',
@@ -43,6 +46,9 @@ repository = "https://github.com/keller-mark/esbuild-py"
 # Reference: https://stackoverflow.com/a/74421415
 [tool.setuptools]
 package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+esbuild_py = ["precompiled/esbuild.wasm"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

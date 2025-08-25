@@ -2,9 +2,14 @@ import unittest
 import importlib
 import tempfile
 import os
+import shutil
+import pytest
 import esbuild_py
 from unittest import mock
 
+go_installed = shutil.which("go")
+
+@pytest.mark.skipif(not go_installed, reason="Go is not installed")
 class TestBuildAPI(unittest.TestCase):
     """
     Tests for the `esbuild.build()` API.

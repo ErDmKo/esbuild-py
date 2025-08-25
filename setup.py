@@ -43,18 +43,8 @@ class build_go_ext(build_ext):
         if out != 0:
             raise CompileError('Go build failed. Please check your Go installation.')
 
-# --- Setup Configuration ---
-
-# We start with a base configuration.
-# It will be modified based on whether Go is available.
 setup_args = dict(
-    # install_requires will be populated based on the build strategy
     install_requires=[],
-    # package_data is used to include the .wasm file for the fallback
-    package_data={
-        'esbuild_py': ['esbuild.wasm'],
-    },
-    # We don't want to zip the egg, as we need to access the shared library/wasm file.
     zip_safe=False,
 )
 

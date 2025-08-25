@@ -30,12 +30,12 @@ class WasmBackend:
         try:
             log.debug("Attempting to load WASM from 'esbuild_py.precompiled'.")
             # Modern approach for Python 3.9+
-            wasm_bytes = importlib.resources.files("precompiled").joinpath("esbuild.wasm").read_bytes()
+            wasm_bytes = importlib.resources.files("esbuild_py").joinpath("precompiled").joinpath("esbuild.wasm").read_bytes()
         except (FileNotFoundError, AttributeError, ModuleNotFoundError):
             # Fallback for older Python versions or different packaging setups
             log.debug("importlib.resources failed, falling back to pkgutil.")
             import pkgutil
-            wasm_bytes = pkgutil.get_data("precompiled", "esbuild.wasm")
+            wasm_bytes = pkgutil.get_data("esbuild_py", "precompiled/esbuild.wasm")
             if wasm_bytes is None:
                 raise FileNotFoundError("Could not find the precompiled esbuild.wasm file.")
 
@@ -129,3 +129,4 @@ class WasmBackend:
         request_json_bytes = json.dumps(input).encode('utf-8')
         files = kwargs['entry_points'] + [kwargs['outfile']]
         return self.send_content(request_json_bytes, files)
+
