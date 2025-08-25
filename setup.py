@@ -46,6 +46,9 @@ class build_go_ext(build_ext):
 setup_args = dict(
     install_requires=[],
     include_package_data=True,
+    package_data={
+        'esbuild_py': ['precompiled/esbuild.wasm'],
+    },
     zip_safe=False,
 )
 
