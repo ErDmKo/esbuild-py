@@ -43,7 +43,6 @@ dev = [
 [project.urls]
 repository = "https://github.com/keller-mark/esbuild-py"
 
-# Reference: https://stackoverflow.com/a/74421415
 [tool.setuptools]
 package-dir = {"" = "src"}
 
@@ -53,7 +52,6 @@ esbuild_py = ["precompiled/esbuild.wasm"]
 [tool.setuptools.packages.find]
 where = ["src"]
 
-# Reference: https://stackoverflow.com/a/50156706
 [tool.pytest.ini_options]
 pythonpath = [
   "src"
