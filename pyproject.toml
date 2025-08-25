@@ -15,9 +15,6 @@ license-files = [
   "LICENSE"
 ]
 requires-python = ">=3.7"
-dependencies = [
-  'wasmtime',
-]
 keywords = ["widgets", "javascript", "react"]
 classifiers = [
   'Development Status :: 4 - Beta',
